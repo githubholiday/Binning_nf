@@ -1,0 +1,67 @@
+// ============================================================
+// modules/metaspades/config —— 模块级配置
+//
+//   [软件与环境]  params / env —— 该模块用什么软件、什么镜像
+//   [默认资源]    process.withName —— 默认 cpus/memory/调度器/publishDir
+//
+// 规则：
+//   - params 必须声明在 process 块【之前】（Nextflow：被 include 的配置只能看到 include 之前已声明的参数）
+//   - 模块的软件路径由本文件管理，项目方【不需要】改动
+//   - 资源/调度器可被流程级 pipeline.yaml 覆盖（pipeline.generated.config 最后被 include）
+// ============================================================
+
+// —— 软件与环境（模块专属）——
+// 声明在【模块层级】；流程级 nextflow.config 用 includeConfig 引入本文件后，
+// 这些 params 会自动合并进流程配置（Nextflow 原生行为，无需额外合并机制）。
+// 项目方要换目录/换二进制时，不必改流程本体：
+//   nextflow run ../pipeline --sif_dir /other/dir --metaspades_bin /path/to/metaSPAdes.py
+// 或在项目级 nextflow.config 里声明同名 params 覆盖。
+params {
+    // ↓↓↓ 占位：容器镜像根目录，按你的实际部署改 ↓↓↓
+    //   方案A（默认）：放在流程本体目录下 → ${projectDir}/sif  （即 pipeline/sif/）
+    //   方案B：放集群公共目录 → 改成绝对路径，如 '/annogene/data1/bioinfo/.../sif'
+    sif_dir = "${projectDir}/sif"
+
+    // metaSPAdes 可执行文件：非容器模式，直接使用集群已装二进制
+    //   （shanzhong 的 metaspades conda 环境；非容器下由宿主机解释器执行，需保证该路径可读）
+    //   （对应原 config.txt 的 `METASPADES=/path/to/metaSPAdes.py`）
+    metaspades_bin = '/annogene/data1/bioinfo/Seq/software/miniforge/shanzhong/miniforge3/envs/metaspades/bin/metaspades.py'
+
+    // 非容器模式：置空以禁用 singularity 容器（process 的 container 指令为空 = 不在容器内运行）
+    metaspades_sif = ''
+}
+
+env {
+    METASPADES = params.metaspades_bin
+}
+
+// —— 模块默认资源/调度器/输出目录 ——
+// 注意：executor 不在此声明——per-process 指令优先级高于 profile 的全局
+// process.executor，写死会让 -profile local 失效。调度器由 profile（sge/k8s/local）
+// 或 pipeline.yaml（生成 pipeline.generated.config）决定。
+process {
+    withName: 'MetaSpades' {
+        queue      = 'micro.q,sci.q'            // SGE 队列，按你的集群改（local executor 下忽略）
+        // 对齐手工投递习惯：qsub -cwd -pe smp 32 -l h_vmem=250G -q micro.q,sci.q
+        //   h_vmem —— Nextflow 自动按 task.memory 生成（memory='250 GB' → h_vmem=250G），无需手写
+        //   -pe smp N —— 用 penv='smp' 声明并行环境，Nextflow 自动按 cpus 申请 N 个核（无需手写 -l p=N）
+        //   -cwd   —— 不需要：Nextflow 每任务自带独立 work 目录并自动 staging
+        penv       = 'smp'
+        cpus       = 32                          // 对应原 Makefile threads?=32
+        memory     = '250 GB'                    // metaSPAdes 内存消耗大，按集群实际调整（metagenome 可达数百 GB）
+        container  = params.metaspades_sif
+
+        // 输出目录根：${outdir}/metaspades（模块级，不含 sample 层）
+        // 样本层由 process 输出名提供：组装目录命名为 <sample_id> → 实际落点 ${outdir}/metaspades/<sample_id>/
+        //   <sample_id>/                   —— 完整组装目录（scaffolds/gfa/log）
+        //   <sample_id>/final.contig.fa    —— 重命名后的最终 contigs
+        // 这样避免旧式 outdir/<模块>/<project>/<sample>/<sample>_xxx 的双层嵌套；project 维度不再进路径。
+        // 注意：config 文件里 publishDir 必须写【赋值 + map 列表】语法；
+        // `publishDir path: ..., mode: ...` 是 process 脚本里的方法调用写法，放在 config 会报
+        // "Unexpected input: 'path'"。${sample_id} 是任务级输入变量，必须包在闭包 {} 里延迟求值。
+        publishDir = [
+            path: { "${params.outdir}/metaspades" },
+            mode: 'copy'
+        ]
+    }
+}

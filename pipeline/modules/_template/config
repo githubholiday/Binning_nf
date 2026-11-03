@@ -1,0 +1,61 @@
+// ============================================================
+// 模块 config —— 通用注释示例（学习用，非真实步骤）
+//
+//   [软件与环境]  params / env —— 该模块用什么软件、什么镜像
+//   [默认资源]    process.withName —— 默认 cpus/memory/调度器/publishDir
+//
+// 规则：
+//   - params 必须声明在 process 块【之前】
+//   - 模块的软件路径由本文件管理，项目方【不需要】改动流程本体即可换二进制/换镜像：
+//       nextflow run ../pipeline --tool_bin /path/to/tool
+//       或在项目级 nextflow.config 声明同名 params 覆盖
+//   - 资源/调度器可被流程级 pipeline.yaml 覆盖（pipeline.generated.config 最后被 include，
+//     因而优先级最高）
+//   - executor【不】在此声明：per-process 指令优先级高于 profile 的全局 process.executor，
+//     写死会让 -profile local 失效；调度器交给 profile（sge/k8s/local）或 pipeline.yaml 决定。
+// ============================================================
+
+// —— 软件与环境 ——
+// 流程级 nextflow.config 用 includeConfig 引入本文件后，这些 params 自动合并进流程配置。
+params {
+    // 容器镜像根目录（方案A：流程目录 sif/；方案B：集群公共目录绝对路径）
+    sif_dir = "${projectDir}/sif"
+
+    // 可执行文件：默认填集群绝对路径（非容器直接运行）；容器模式改为容器内命令（'tool'）并设置下方 *_sif
+    tool_bin = '/abs/path/to/tool'
+
+    // 容器镜像：默认空字符串 = 不使用容器，直接用上面的集群二进制
+    // （与顶层 singularity.enabled 配合：空 container 时该进程在宿主机直接执行）
+    tool_sif = ''
+
+    // 其它模块专属参数（如排序内存等）
+    sort_mem = '2G'
+}
+
+env {
+    // 把二进制路径导出为环境变量（可选，供脚本或子进程引用）
+    TOOL = params.tool_bin
+}
+
+// —— 模块默认资源/调度器/输出目录 ——
+process {
+    withName: 'My_Process' {
+        // 调度相关（SGE 队列 / 投递参数）—— local executor 下被忽略
+        queue          = 'micro.q,sci.q,mid.q'
+        penv           = 'smp'                   // SGE 并行环境（替代 clusterOptions 的 -l p=N，自动按 cpus 申请核；local executor 下忽略）
+
+        // 资源：线程/内存用 ${task.cpus} 引用，不要写死；核数由 cpus 决定，并行环境由 penv 申请
+        cpus   = 8
+        memory = '20 GB'
+
+        // 容器：空字符串 = 不启用容器；填了 *_sif 才走容器
+        container = params.tool_sif
+
+        // 输出目录根 = ${outdir}/<模块名>（不含 ${sample_id}，符合规范）；
+        // 样本层由产物文件名（含 sample_id）提供，天然隔离、互不覆盖。
+        publishDir = [
+            path: { "${params.outdir}/<模块名>" },
+            mode: 'copy'
+        ]
+    }
+}

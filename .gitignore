@@ -1,0 +1,21 @@
+# WorkBuddy 本机项目数据（不入库）
+.workbuddy/
+
+# Nextflow 运行产物
+work/
+results/
+.nextflow/
+.nextflow.log*
+.trace*
+.timeline*
+.report*
+.dag*
+pipeline_info/
+
+# Singularity 镜像（体积大，不入库）
+sif/
+*.sif
+
+# 系统杂项
+Thumbs.db
+.DS_Store

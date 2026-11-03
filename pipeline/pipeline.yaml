@@ -1,0 +1,50 @@
+# ============================================================
+# pipeline.yaml —— 流程级步骤清单（manifest）
+#
+# 声明：步骤顺序与依赖、模块与 process、输入来源、每步资源、调度器。
+# 由 scripts/pipeline2main.py 生成 main.nf（自动串联流程）
+# 由 scripts/yaml2config.py 生成 pipeline.generated.config（资源/调度器覆盖模块默认值）
+#
+# 【不在这里配的东西】
+#   - 容器镜像路径 → 归模块（modules/<name>/config 的 params）
+#   - 样本表/比较组表/输出目录/项目元信息 → 归项目（项目自己的 nextflow.config）
+#
+# 结构约束（零依赖解析器要求：扁平，不要嵌套映射）：
+#   - 顶层为标量键 + steps 列表；steps 每项为扁平键值
+# ============================================================
+
+# —— 样本表定义（生成 samples channel）——
+samples_file: samples.csv
+samples_columns: sample_id,project,r1,r2
+samples_types: val,val,path,path
+
+steps:
+  - name: assemble
+    module: metaspades        # 模块目录名 → include './modules/metaspades/process.nf'
+    process: MetaSpades       # process 名（大驼峰）
+    input: samples            # 输入来源：samples（样本表通道）或前一步的 name
+    output: assemble_out      # 生成的变量名
+    emit: contig              # 多输出 process 时取哪个 emit 通道（可选）
+    executor: sge             # 调度器：sge / k8s / local / slurm
+    queue: mid.q,sci.q        # 队列
+    cpus: 32                  # CPU 核数
+    memory: 250 GB            # 内存
+    depends_on: []            # 依赖的步骤名（manifest；实际顺序由 input 接线决定）
+    # container 不在此声明 —— 镜像路径归模块 config（modules/<name>/config 的 params）
+    # 如确需在流程级覆盖镜像，取消注释并重跑 yaml2config.py：
+    # container: ${params.sif_dir}/metaspades.sif
+
+  - name: align
+    module: metaspades_align
+    process: MetaSpades_Align
+    # ⚠️ 自定义步骤：需同时消费 metaSPAdes 的 contigs 与原始 reads（双输入 join，按 sample_id/project），
+    #    pipeline2main.py 仅支持单输入线性链，无法表达，故 main.nf 中该接线为手写：
+    #    请勿用 pipeline2main.py 覆盖 main.nf（详见 main.nf 头部注释）。
+    #    下面 executor/queue/cpus/memory 仅作为资源 manifest，由 yaml2config.py 生成 withName 覆盖模块默认。
+    input: assemble            # 资源 manifest 用途；实际接线见 main.nf（assemble.contig join samples）
+    emit: contig
+    executor: sge
+    queue: micro.q,sci.q,mid.q
+    cpus: 8                    # 对应手工 bwa mem -t 8
+    memory: 20 GB              # 对应手工 samtools sort 量级
+    depends_on: [assemble]
