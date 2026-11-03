@@ -1,0 +1,30 @@
+# ============================================================
+# 换行符策略：一律 LF，禁止 CRLF
+#
+# 为什么必须写这个文件：
+#   Windows 上编辑/保存，或经微信、Word、网页等中转时，换行会被写成 CRLF。
+#   传到 Linux 后：
+#     - shell 脚本报 “$'\r': 未找到命令”
+#     - nextflow config 可能出现莫名的解析错误
+#   text=auto + eol=lf 让 git 在 add 与 checkout 两侧都强制 LF，
+#   从此杜绝这类“代码没改却跑不起来”的问题。
+# ============================================================
+
+* text=auto eol=lf
+
+# 代码/配置类：显式声明
+*.sh      text eol=lf
+*.nf      text eol=lf
+*.py      text eol=lf
+*.config  text eol=lf
+*.yaml    text eol=lf
+*.yml     text eol=lf
+*.csv     text eol=lf
+*.md      text eol=lf
+metaspades/config  text eol=lf
+
+# 二进制：不要让 git 动它
+*.sif     binary
+*.gz      binary
+*.png     binary
+*.pdf     binary
