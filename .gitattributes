@@ -1,0 +1,7 @@
+# 强制所有文本文件使用 LF（集群/Linux 兼容，shell 脚本不受 CRLF 影响）
+* text=auto eol=lf
+
+# 二进制文件
+*.png binary
+*.gz binary
+*.sif binary
