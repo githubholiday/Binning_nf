@@ -14,12 +14,12 @@ process MetaSpades_Align {
 
     input:
     // contigs：上游 metaSPAdes 产出的组装结果（显式 fa 文件，由流程层注入）
-    tuple val(sample_id), val(project), path(contigs), path(r1), path(r2)
+    tuple val(sample_id), path(contigs), path(r1), path(r2)
 
     output:
     // 落点 = outdir/metaspades_align/<sample_id>.aln.sort.bam(.bai)（样本由文件名承载）
-    tuple val(sample_id), val(project), path("${sample_id}.aln.sort.bam"),     emit: bam
-    tuple val(sample_id), val(project), path("${sample_id}.aln.sort.bam.bai"), emit: bai
+    tuple val(sample_id), path("${sample_id}.aln.sort.bam"),     emit: bam
+    tuple val(sample_id), path("${sample_id}.aln.sort.bam.bai"), emit: bai
 
     script:
     // -F 3584 = 过滤 secondary(0x100)+supplementary(0x400)+duplicate(0x800)；-q 20 = 最小 MAPQ

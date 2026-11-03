@@ -15,8 +15,8 @@
 
 # —— 样本表定义（生成 samples channel）——
 samples_file: samples.csv
-samples_columns: sample_id,project,r1,r2
-samples_types: val,val,path,path
+samples_columns: sample_id,r1,r2
+samples_types: val,path,path
 
 steps:
   - name: assemble
@@ -37,7 +37,7 @@ steps:
   - name: align
     module: metaspades_align
     process: MetaSpades_Align
-    # ⚠️ 自定义步骤：需同时消费 metaSPAdes 的 contigs 与原始 reads（双输入 join，按 sample_id/project），
+    # ⚠️ 自定义步骤：需同时消费 metaSPAdes 的 contigs 与原始 reads（双输入 join，按 sample_id），
     #    pipeline2main.py 仅支持单输入线性链，无法表达，故 main.nf 中该接线为手写：
     #    请勿用 pipeline2main.py 覆盖 main.nf（详见 main.nf 头部注释）。
     #    下面 executor/queue/cpus/memory 仅作为资源 manifest，由 yaml2config.py 生成 withName 覆盖模块默认。

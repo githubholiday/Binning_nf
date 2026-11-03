@@ -20,12 +20,12 @@ process My_Process {
     tag "My_Process on ${sample_id}"
 
     input:
-    // project 等透传字段用于下游分组；真正要运算的文件用 path(...) 接收
-    tuple val(sample_id), val(project), path(in_fa), path(r1), path(r2)
+    // 多路输入按共同键（sample_id）join；真正要运算的文件用 path(...) 接收
+    tuple val(sample_id), path(in_fa), path(r1), path(r2)
 
     output:
     // 输出文件名带 sample_id（落点 = outdir/<模块名>/<sample_id>.result），样本由文件名承载，天然隔离
-    tuple val(sample_id), val(project), path("${sample_id}.result"), emit: result
+    tuple val(sample_id), path("${sample_id}.result"), emit: result
 
     script:
     // 软件命令里一律用 params.<xxx> 引用 config 里声明的二进制路径 / 参数

@@ -18,15 +18,14 @@ process MetaSpades {
     tag "MetaSpades on ${sample_id}"
 
     input:
-    // project 透传（下游分组用），不再进入输出路径——输出统一为 outdir/<模块名>/<sample_id>/
-    tuple val(sample_id), val(project), path(r1), path(r2)
+    tuple val(sample_id), path(r1), path(r2)
 
     output:
     // 完整组装目录（名=sample_id）：scaffolds.fasta / assembly_graph*.gfa / before_rr.fasta /
     // spades.log / final.contig.fa（重命名后的最终 contigs）等，供下游分箱、QUAST 使用
     // 样本维度靠【目录名(sample_id)】区分，发布到 outdir/metaspades/<sample_id>/
     // （publishDir 路径本身不含 sample_id，避免 outdir/<模块>/<sample>/<sample>_xxx 双层嵌套）
-    tuple val(sample_id), val(project), path("${sample_id}", type: 'dir'), emit: assembly
+    tuple val(sample_id), path("${sample_id}", type: 'dir'), emit: assembly
 
     script:
     def memArg = task.memory ? "--memory ${task.memory.toGiga()}" : ''

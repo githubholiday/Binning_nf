@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 include { MetaSpades_Align } from './process.nf'
 
 // 本模块为下游步骤：需 (contigs + 双端 reads) 两路输入。
-//   samples   = 样本表路径（CSV：sample_id,project,r1,r2）—— 与 metaspades 模块共用同一格式、同一份表
+//   samples   = 样本表路径（CSV：sample_id,r1,r2）—— 与 metaspades 模块共用同一格式、同一份表
 //   contig_fa = 组装 contigs 文件路径（单一 fa，供所有样本回帖）
 //
 // 【两种用法】
@@ -16,7 +16,7 @@ include { MetaSpades_Align } from './process.nf'
 //         把上一步 contigs 喂给 process，而非写 params.contig_fa。模块 standalone 的 contig_fa 参数仅用于①。
 // 输入均为显式文件参数，模块内不做路径拼接。
 params {
-    samples   = 'samples.csv'     // 样本表路径（CSV：sample_id,project,r1,r2）
+    samples   = 'samples.csv'     // 样本表路径（CSV：sample_id,r1,r2）
     contig_fa = 'contigs.fasta'   // 组装 contigs 文件路径（仅独立运行①使用；流程内②由上游通道注入）
     outdir    = 'results'
 }
@@ -26,7 +26,7 @@ workflow {
 
     samples_ch = Channel.fromPath(params.samples)
         .splitCsv(header: true)
-        .map { row -> tuple(row.sample_id, row.project, contigs, file(row.r1), file(row.r2)) }
+        .map { row -> tuple(row.sample_id, contigs, file(row.r1), file(row.r2)) }
 
     align_out = MetaSpades_Align(samples_ch)
     align_out.bam.view()

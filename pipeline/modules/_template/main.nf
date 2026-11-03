@@ -9,13 +9,13 @@ nextflow.enable.dsl=2
 //
 // 输入文件约定（重要，与 process.nf 一致）：
 //   - 所有输入文件都是【显式文件参数】：从 CSV 表读路径 → file(...) 转成文件对象传入；
-//   - 模块内【不做】输入路径拼接；多路输入按共同键（如 sample_id, project）join 即可。
+//   - 模块内【不做】输入路径拼接；多路输入按共同键（sample_id）join 即可。
 // ============================================================
 include { My_Process } from './process.nf'
 
 // 模块默认参数（单独运行时用，命令行可覆盖）
-//   - 样本表 samples.csv：标准四列显式路径 sample_id,project,r1,r2
-//   - 其它输入映射表（如 contigs）：sample_id,project,<具体文件路径>
+//   - 样本表 samples.csv：标准三列显式路径 sample_id,r1,r2
+//   - 其它输入映射表（如 contigs）：sample_id,<具体文件路径>
 params {
     samples = 'samples.csv'
     outdir  = 'results'
@@ -25,7 +25,7 @@ workflow {
     // reads 端：标准样本表 → 文件对象
     samples_ch = Channel.fromPath(params.samples)
         .splitCsv(header: true)
-        .map { row -> tuple(row.sample_id, row.project, file(row.r1), file(row.r2)) }
+        .map { row -> tuple(row.sample_id, file(row.r1), file(row.r2)) }
 
     // 若有多路输入，按共同键 join 后再送入 process：
     //   other_ch.join(samples_ch, by: [0, 1])
