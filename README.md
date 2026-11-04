@@ -19,7 +19,8 @@ Binning_nf/
 │   ├── examples/                 #   samples.example.csv（样本表模板，三列）
 │   └── sif/                      #   容器镜像目录（空，不入库）
 ├── project/                      # 项目级运行配置（当前 238 项目）
-│   ├── nextflow.config           #   本项目参数：outdir / workDir / 样本表路径 / Para_* 元信息
+│   ├── project.config            #   本项目参数：outdir / workDir / 样本表路径 / Para_* 元信息
+│   │                             #   （已改名，不被自动加载，运行时须 -c 显式指定）
 │   ├── samples.csv               #   样本表（三列：sample_id,r1,r2）
 │   └── comparison.csv            #   比较组表
 ├── prepare/                      # 旧 make/bash 流程「准备阶段」参数存档（中转参考，不参与运行）
@@ -44,16 +45,32 @@ cp ../pipeline/examples/samples.example.csv samples.csv
 vim samples.csv          # 改成真实样本与绝对路径（三列：sample_id,r1,r2）
 ```
 
-## 运行（在 project/ 下执行，流程本体在 ../pipeline）
+## 运行（项目配置用 -c 显式指定，避免与流程级 nextflow.config 同名歧义）
 
 ```bash
 # 登录节点干跑验证接线（秒级，不真跑组装）
-nextflow run ../pipeline -profile local -stub-run \
-  --samples ./samples.csv --outdir ./results
+nextflow run ../pipeline -profile local -stub-run -c project.config
 
 # 正式投队列（断点续跑）
-nextflow run ../pipeline -profile sge --samples ./samples.csv --outdir ./results -resume
+nextflow run ../pipeline -profile sge -c project.config -resume
 ```
+
+（任意目录启动均可：`nextflow run /abs/path/pipeline -c /abs/path/project.config`。）
+
+## 配置加载规则（Nextflow 自动发现机制）
+
+自动加载的文件名**必须恰好是 `nextflow.config`**，按优先级由低到高：
+
+| 优先级 | 位置 | 本仓库对应 |
+|---|---|---|
+| 1 | `$HOME/.nextflow/config` | 全局用户配置 |
+| 2 | `main.nf` 所在目录（文档称 project directory） | `pipeline/nextflow.config` |
+| 3 | **启动目录**（`nextflow run` 时所在目录） | （project.config 已改名，不再触发） |
+| 4 | `-c` 指定的文件 | `project/project.config`（优先级最高） |
+
+- 命令行 `--param` 优先级高于一切 config。
+- `-C <file>`（大写）= 只用指定文件，忽略其它所有 config。
+- config 里的相对路径（如 `samples = 'samples.csv'`）按**启动目录**解析，不按 config 文件位置。
 
 或直接用入口脚本：
 
@@ -68,7 +85,7 @@ bash ../run_sge.sh monitor   # 查看已投递任务与产出
 | 层 | 放什么 | 文件 |
 |---|---|---|
 | 流程级 | 步骤顺序、模块资源、调度器、软件/镜像 | `pipeline/nextflow.config`、`pipeline.yaml`、`pipeline/modules/*/config` |
-| 项目级 | 样本表、outdir/workDir、项目元信息（Para_*） | `project/nextflow.config`、`project/samples.csv` |
+| 项目级 | 样本表、outdir/workDir、项目元信息（Para_*） | `project/project.config`（用 `-c` 指定）、`project/samples.csv` |
 
 - **改流程接线**（步骤、join）→ 只动手写 `pipeline/main.nf`，**勿用 `pipeline2main.py` 覆盖它**（align 的双路 join 生成器表达不了）。
 - **改资源配置** → 改 `pipeline/pipeline.yaml`，再 `python pipeline/scripts/yaml2config.py pipeline/pipeline.yaml` 重生成 `pipeline.generated.config`。
@@ -89,10 +106,10 @@ bash ../run_sge.sh monitor   # 查看已投递任务与产出
 
 1. **`includeConfig` 相对路径按「包含它的文件所在目录」解析**。`metaspades/nextflow.config` 只写 `includeConfig 'config'`；流程级 `nextflow.config` 才写 `includeConfig 'modules/...'`。混用会报 `Invalid include source`。
 2. **`process.nf` 不写 `params {}`**（新版 Nextflow 报 `Params block cannot be defined without an entry workflow`）。软件默认值一律放模块 `config`。
-3. **`outdir` 需在 `main.nf` 或 `project/nextflow.config` 声明占位**，否则 `--outdir` 触发严格检查报 `not declared`。
+3. **`outdir` 已在 `pipeline/main.nf` 声明占位**（`project.config` 里的绝对路径为权威值，`--outdir` 可覆盖）；否则从非 `project/` 目录启动时严格检查报 `not declared`。
 4. **`executor` 不在模块 `config` 写死**，交给 `-profile`，否则 `-profile local` 失效。
 5. **本集群多核任务用 SGE 并行环境 `smp`（PE）**：`penv = 'smp'`，Nextflow 按 `cpus` 申请核数；`h_vmem` 由 `memory` 自动生成。
-6. **`samples.csv` 必须有表头** `sample_id,r1,r2`；`--samples` 指向**文件**不是目录。通道为空时 Nextflow 不报错，表现为「几秒 OK 但零任务」。
+6. **`samples.csv` 必须有表头** `sample_id,r1,r2`，且**表头不允许空列名**（行尾多逗号 `sample_id,r1,r2,` 或 CRLF 会报 `Empty header columns are not allowed in CSV file`；用 `head -1 xxx | cat -A` 查隐藏字符，`sed -i -e 's/\r$//' -e 's/,$//' xxx` 修复）。`--samples` 指向**文件**不是目录。通道为空时 Nextflow 不报错，表现为「几秒 OK 但零任务」。
 7. **`metaspades_align` 的 contigs 来自上一步 `MetaSpades` 的通道**（逐样本 `final.contig.fa`），**不进 sample.csv**；模块 standalone 的 `contig_fa` 参数只服务于单独跑该模块。
 
 ## 运行模式对照

@@ -4,7 +4,7 @@
 #
 # 目录分层：
 #   pipeline/   流程本体（流程级）：nextflow.config / pipeline.yaml / modules/
-#   project/    本项目（项目级）：nextflow.config / samples.csv / comparison.csv
+#   project/    本项目（项目级）：project.config（-c 指定）/ samples.csv / comparison.csv
 #
 # 用法（在 project/ 下执行，流程本体在 ../pipeline）：
 #   bash ../run_sge.sh check      # 预检：环境、路径、配置

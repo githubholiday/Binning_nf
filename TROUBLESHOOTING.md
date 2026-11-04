@@ -17,12 +17,12 @@ Binning_nf/
 │   │   └── _template/
 │   ├── scripts/                  #   nfstatus.sh / pipeline2main.py / yaml2config.py / nfyaml.py
 │   └── examples/samples.example.csv
-├── project/                      # 项目级：nextflow.config / samples.csv / comparison.csv
+├── project/                      # 项目级：project.config（用 -c 指定）/ samples.csv / comparison.csv
 ├── prepare/                      # 旧流程参数存档（参考用，不参与运行）
 └── run_sge.sh                    # 集群运行入口
 ```
 
-**分层铁律**：样本表/R1/R2/outdir = 项目级（`project/`）；软件/镜像/资源 = 模块级（`pipeline/modules/*/config`）；调度器/步骤顺序 = 流程级（`pipeline/nextflow.config` + `pipeline.yaml`）。
+**分层铁律**：样本表/R1/R2/outdir = 项目级（`project/`，config 用 `-c` 指定）；软件/镜像/资源 = 模块级（`pipeline/modules/*/config`）；调度器/步骤顺序 = 流程级（`pipeline/nextflow.config` + `pipeline.yaml`）。
 
 **输出路径规范（所有模块统一）**：`outdir/<模块名>/<sample_id>/` —— `publishDir` 根 = `${params.outdir}/<模块名>`（**不含 sample 层**），样本层由产物文件名/目录名（含 `${sample_id}`）提供。例如 metaSPAdes 最终落点：`outdir/metaspades/A10/`（内含 final.contig.fa、scaffolds.fasta、gfa、log 等）。
 
@@ -66,7 +66,7 @@ bash pipeline/scripts/nfstatus.sh -e project         # 只列失败任务 + 直�
 |---|---|---|
 | `Unexpected input: 'path'`（config 里） | `publishDir path: ...` 是 process 语法，config 不合法 | config 用 `publishDir = [ path: { "..." }, mode: 'copy' ]`（赋值+闭包） |
 | `Params block cannot be defined without an entry workflow` | process.nf 是纯 process 文件，禁止 params 块 | 软件默认值放模块 `config`，process.nf 不写 params |
-| `Parameter 'outdir' was specified but not declared` | 配置链无 outdir 声明 | 在 `main.nf` 或 `project/nextflow.config` 的 params 块加 `outdir` 占位 |
+| `Parameter 'outdir' was specified but not declared` | 配置链无 outdir 声明 | 已在 `pipeline/main.nf` params 块声明占位；确认集群代码已 `git pull` 到含此修复的版本 |
 | `Unknown configuration profile: 'sge'` | 没定义 profiles | 流程级 `nextflow.config` 补 profiles（sge/k8s/local+singularity/docker） |
 | 加了 `-profile local` 仍投 SGE | 模块 config 写死 `executor='sge'`（per-process 优先于 profile） | executor 不写死，交给 profile / pipeline.yaml |
 | `job denied: use parallel environments...` | 集群不认 Nextflow 默认多核请求 | 标准 PE 用 `penv='<名>'`；自定义资源用 `cluster.options='-l p=N,vf=...'` |
