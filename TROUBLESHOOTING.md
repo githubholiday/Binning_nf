@@ -58,7 +58,8 @@ bash pipeline/scripts/nfstatus.sh -t project         # 每个任务：状态/exi
 bash pipeline/scripts/nfstatus.sh -e project         # 只列失败任务 + 直接给出看日志的命令
 ```
 
-`nextflow log` 只能在**启动目录**跑（读 `./.nextflow/history`）。每个 run 自动落盘 `<outdir>/pipeline_info/trace.txt`（含 workdir 列）+ `report.html`。
+`nextflow log` 只能在**启动目录**跑（读 `./.nextflow/history`）。每个 run 自动落盘 `<启动目录>/pipeline_info/trace.txt`（含 workdir 列）+ `report.html`。
+⚠️ 落点是**启动目录**而非 outdir：config 的 GString 在解析时求值，`-c` 里的 `params.outdir` 当时还不可见（曾烤出 `null/pipeline_info/...` 坏路径），故 trace/report 固定用 `launchDir`。旧版报 `Report file already exists` 需 `report.overwrite = true`（已配）。
 
 ## 4. 排障速查表
 

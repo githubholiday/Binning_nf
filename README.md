@@ -100,7 +100,7 @@ bash ../run_sge.sh monitor   # 查看已投递任务与产出
 | 任务明细（状态/退出码/workdir） | `bash pipeline/scripts/nfstatus.sh -t project` |
 | 只看失败任务 + 看日志命令 | `bash pipeline/scripts/nfstatus.sh -e project` |
 | 历史 run | `nextflow log`（必须在启动目录里跑） |
-| 任务级报告 | `<outdir>/pipeline_info/trace.txt` |
+| 任务级报告 | `<启动目录>/pipeline_info/trace.txt`（+ report.html） |
 | 打断点续跑 | 原命令加 `-resume` |
 
 ## 关键约定（踩过的坑）
