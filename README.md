@@ -95,6 +95,7 @@ bash ../run_sge.sh monitor   # 查看已投递任务与产出
 
 | 目的 | 命令 |
 |---|---|
+| **一键扫描所有项目状态/失败任务（任意目录可执行）** | `bash pipeline/scripts/nfscan.sh -f /annogene/.../238`（`-q` 快速模式只读 history） |
 | 查队列真实状态 | `qstat -u tuchengfang` |
 | 任务明细（状态/退出码/workdir） | `bash pipeline/scripts/nfstatus.sh -t project` |
 | 只看失败任务 + 看日志命令 | `bash pipeline/scripts/nfstatus.sh -e project` |
