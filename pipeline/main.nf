@@ -12,6 +12,12 @@ include { MetaSpades_Align } from './modules/metaspades_align/process.nf'
 
 params {
     samples = 'samples.csv'
+
+    // outdir 的【权威值】在项目级 nextflow.config（params.outdir），命令行 --outdir 可覆盖。
+    // 这里必须声明占位：若从非 project/ 目录启动（如临时测试目录），配置链里没有别处声明 outdir，
+    // 新版 Nextflow 严格参数检查会报
+    // "Parameter 'outdir' was specified on the command line or params file but is not declared"。
+    outdir = 'results'
 }
 
 // 样本通道工厂：DSL2 中一个 channel 只能被消费一次，
