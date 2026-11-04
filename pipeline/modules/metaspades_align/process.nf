@@ -20,9 +20,14 @@ process MetaSpades_Align {
     tuple val(sample_id), path("${sample_id}.aln.sort.bam.bai"), emit: bai
 
     script:
-    def sortMem = params.bam_sort_mem ?: '2G'
-    // sort 预分配 线程数×-m 内存；线程封顶 4（≤8G），登录节点 ulimit 小也能跑，bwa mem 仍用满 task.cpus
-    def sortThreads = Math.min(task.cpus ?: 1, 4)
+    // SGE 陷阱：Nextflow 把 task.memory 均分到各 slot（h_vmem≈memory/cpus），
+    // ulimit -v 限制的是【单进程】；sort 预分配 = 线程数×-m，必须 ≤ 单 slot 额度，
+    // 否则报 couldn't allocate memory for bam_mem。故 sort 线程压到 2、
+    // -m 按单 slot 额度的 80% 推导（20GB/8slot→2.5G/slot→-m 1G→预分配 2G）。
+    // params.bam_sort_mem 可强制覆盖（自行承担 ulimit 风险）。
+    def sortThreads = Math.min(2, task.cpus ?: 1)
+    def perSlotMega = (task.memory ? task.memory.mega : 2048d) / (task.cpus ?: 1)
+    def sortMem = params.bam_sort_mem ?: "${Math.max(256, (perSlotMega * 0.8 / sortThreads) as int)}M"
     """
     ${params.bwa_bin} index ${contigs}
     ${params.bwa_bin} mem ${contigs} ${r1} ${r2} -t ${task.cpus} \
