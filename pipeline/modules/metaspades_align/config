@@ -1,4 +1,4 @@
-// 软件参数默认指向集群 miniforge 环境（与手工命令一致，非容器直接运行）；容器模式改为容器内命令并设置 *_sif。
+// 非容器：集群 miniforge 二进制；改容器则填容器内命令并把对应 *_sif 指向镜像
 params {
     sif_dir = "${projectDir}/sif"
 
@@ -17,13 +17,14 @@ env {
 
 process {
     withName: 'MetaSpades_Align' {
-        queue          = 'micro.q,sci.q,mid.q'     // SGE 队列（local executor 下忽略）
-        penv           = 'smp'                        // SGE 并行环境（替代 clusterOptions 的 -l p=N，自动按 cpus 申请核；local executor 下忽略）
-        cpus           = 8                          // 对应手工 bwa mem -t 8
-        memory         = '20 GB'                    // 对应手工 samtools sort 量级
-        container      = params.bwa_sif             // 空字符串 = 不启用容器
+        // 对应手工：qsub -pe smp 8 -q micro.q,sci.q,mid.q
+        queue          = 'micro.q,sci.q,mid.q'
+        penv           = 'smp'
+        cpus           = 8
+        memory         = '20 GB'
+        container      = params.bwa_sif     // 空 = 不启用容器
 
-        // 输出根 = ${outdir}/metaspades_align（不含 sample_id，符合规范；样本由文件名承载）
+        // 落点 ${outdir}/metaspades_align/<sample_id>.aln.sort.bam（样本层由文件名承载）
         publishDir = [
             path: { "${params.outdir}/metaspades_align" },
             mode: 'copy'
