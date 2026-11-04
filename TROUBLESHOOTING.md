@@ -74,6 +74,7 @@ bash pipeline/scripts/nfstatus.sh -e project         # 只列失败任务 + 直�
 | `$'\r': 未找到命令` / `set -o pipefail 无效` | 文件是 CRLF；用 `sh` 跑 bash 脚本 | `sed -i 's/\r$//'` 转 LF；脚本用 `bash` 或 `./` 跑，勿用 `sh` |
 | run 秒级 OK 且 qstat 无任务 | samples 通道为空（fromPath 不报错） | 查 `--samples` 路径是否存在、是否指向文件、表头是否齐全 |
 | `spades-hammer ... OS return value: 12` | ENOMEM，内存不够 | `memory`/`cluster.options` 的 `vf=`/`cpus`/`p=` **四处同步调大** |
+| `samtools sort: couldn't allocate memory for bam_mem` | sort 启动即预分配 线程数×-m，且是**单进程**行为；SGE 下 task.memory 被均分到 slot（单进程额度=memory/cpus），预分配超额度即失败（bwa 能跑完、只挂 sort） | 已修：线程封顶 2、-m 按「单 slot 额度×80%」推导（20GB/8slot→2.5G/slot→-m 1G→预分配 2G）；手动覆盖用 `--bam_sort_mem`（自评 ulimit） |
 | `No such property: contig` / `not defined` | main.nf 接线错（如错用 `.into` 变量、引用不存在的 emit） | align 的 contigs 来自上一步通道：从组装目录 `map` 派生 final.contig.fa 再 `join(samples, by:[0])`；勿用 `pipeline2main.py` 覆盖 main.nf |
 | 字符损坏（`>=`→`≥`、字段错位） | 复制粘贴/聊天工具中转代码 | 一律用 git/scp，禁止文本中转 |
 
@@ -96,4 +97,3 @@ cd Binning_nf && git pull
 - 内存 250G/32 核为占位上限，A10 实测若仍 ENOMEM 需继续上调（memory / cpus / cluster.options 同步）。
 - metaspades 当前走**非容器**（shanzhong 的 conda 环境二进制）；若切回 Singularity，需把 `metaspades.sif` 放进 `pipeline/sif/`（该镜像不入库，需自行传输）。
 - `project/comparison.csv` 目前仅表头，比较组待填；`prepare/` 为旧流程参数存档，仅作溯源参考。
-| `couldn't allocate memory for bam_mem` | samtools sort 启动即预分配 线程数×-m 内存（**单进程**）；登录节点 ulimit -v 太小，或 SGE 下 task.memory 被均分到各 slot（单进程额度=memory/cpus），预分配超过单进程额度即失败 | 已修：process.nf 中 sort 线程压到 2、-m 按「单 slot 额度×80%」自动推导（20GB/8slot→-m 1G→预分配 2G）；如需覆盖用 `--bam_sort_mem`（自行评估 ulimit） |
