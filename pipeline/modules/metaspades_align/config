@@ -7,8 +7,9 @@ params {
     bwa_sif      = ''
     samtools_sif = ''
 
-    // bam_sort_mem 不在此设默认值：sort -m 由 process 按「单 slot 额度×80%」自动推导，
+    // bam_sort_mem 默认 null：sort -m 由 process 按「单 slot 额度×80%」自动推导，
     // 写死会覆盖推导值、重现 bam_mem 分配失败；需要时仅命令行覆盖 --bam_sort_mem
+    bam_sort_mem = null
 }
 
 env {
