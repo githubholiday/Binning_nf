@@ -96,3 +96,4 @@ cd Binning_nf && git pull
 - 内存 250G/32 核为占位上限，A10 实测若仍 ENOMEM 需继续上调（memory / cpus / cluster.options 同步）。
 - metaspades 当前走**非容器**（shanzhong 的 conda 环境二进制）；若切回 Singularity，需把 `metaspades.sif` 放进 `pipeline/sif/`（该镜像不入库，需自行传输）。
 - `project/comparison.csv` 目前仅表头，比较组待填；`prepare/` 为旧流程参数存档，仅作溯源参考。
+| `couldn't allocate memory for bam_mem` | samtools sort 启动即预分配 线程数×-m 内存，超过节点允许量（登录节点 ulimit -v / 空闲内存不足） | 登录节点冒烟测试降配：`-process.cpus 2 -process.memory 8.GB`；正式跑用 `-profile sge`（sort 线程已封顶 4，≤8G） |

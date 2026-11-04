@@ -21,12 +21,14 @@ process MetaSpades_Align {
 
     script:
     def sortMem = params.bam_sort_mem ?: '2G'
+    // sort 预分配 线程数×-m 内存；线程封顶 4（≤8G），登录节点 ulimit 小也能跑，bwa mem 仍用满 task.cpus
+    def sortThreads = Math.min(task.cpus ?: 1, 4)
     """
     ${params.bwa_bin} index ${contigs}
     ${params.bwa_bin} mem ${contigs} ${r1} ${r2} -t ${task.cpus} \
         | ${params.samtools_bin} view -F 3584 -q 20 -bS - \
         > ${sample_id}.aln.bam
-    ${params.samtools_bin} sort -@ ${task.cpus} -m ${sortMem} ${sample_id}.aln.bam \
+    ${params.samtools_bin} sort -@ ${sortThreads} -m ${sortMem} ${sample_id}.aln.bam \
         -o ${sample_id}.aln.sort.bam
     ${params.samtools_bin} index ${sample_id}.aln.sort.bam
     """
