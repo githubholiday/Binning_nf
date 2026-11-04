@@ -14,15 +14,18 @@ params {
     samples = 'samples.csv'
 }
 
+// 样本通道工厂：DSL2 中一个 channel 只能被消费一次，
+// 为避免 .into fork 在本版本 workflow 块内报错（无法声明变量），
+// 这里用【顶层】函数构建两份独立 channel（CSV 解析极轻量，无副作用）。
+// ⚠️ def 函数必须定义在 workflow 块【外部】（脚本顶层）：
+//    写进 workflow 块会报 "Unexpected input: '('"
+def sampleCh() {
+    Channel.fromPath(params.samples)
+        .splitCsv(header: true)
+        .map { row -> tuple(row.sample_id, file(row.r1), file(row.r2)) }
+}
+
 workflow {
-    // 样本通道工厂：DSL2 中一个 channel 只能被消费一次，
-    // 为避免 .into fork 在本版本 workflow 块内报错（无法声明变量），
-    // 这里用工厂函数构建两份【独立】channel（CSV 解析极轻量，无副作用）
-    def sampleCh() {
-        Channel.fromPath(params.samples)
-            .splitCsv(header: true)
-            .map { row -> tuple(row.sample_id, file(row.r1), file(row.r2)) }
-    }
     samples_for_assemble = sampleCh()
     samples_for_align    = sampleCh()
 
